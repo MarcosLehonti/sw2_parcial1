@@ -16,6 +16,14 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from correcciones import obtener_correcciones
 import json
+#===============================================================================
+import ssl
+import re
+import socket
+from datetime import datetime
+from urllib.parse import urlparse, urljoin  # ya lo usas, pero lo dejo claro
+
+#===============================================================================
 app = Flask(__name__)
 app.secret_key = 'vulnerability_scanner_secret_key'
 scan_results = {}  # aquí se guardarán los resultados completos por sesión
@@ -167,6 +175,96 @@ def generate_correcciones_pdf(correcciones_text, filename):
 
 
 #varible que almacena las correciones de las vulnerabilidades
+
+
+# NUEVA: A01 - Broken Access Control Test ============================================================
+def check_broken_access_control(url):
+    results_queue.put(f"Probando Broken Access Control (A01) en {url}...")
+    try:
+        # Obtener la página principal
+        res = requests.get(url, timeout=10)
+        soup = BeautifulSoup(res.text, 'html.parser')
+        links = [a.get('href') for a in soup.find_all('a', href=True)]
+        
+        # Buscar enlaces con patrones como /user/1, /profile/123
+        potential_endpoints = [link for link in links if re.search(r'/[\w-]+/\d+', link)]
+        
+        if not potential_endpoints:
+            # Fallback más genérico: probar /id/1
+            potential_endpoints = [f"{urlparse(url).scheme}://{urlparse(url).netloc}/id/1"]
+        
+        vulnerable = False
+        for endpoint in potential_endpoints[:2]:
+            full_url = urljoin(url, endpoint)
+            # Extraer ID original
+            match = re.search(r'/(\d+)', full_url)
+            if not match:
+                continue
+            original_id = match.group(1)
+            tampered_url = re.sub(rf'/{original_id}', f'/{int(original_id) + 1}', full_url)
+            
+            # Hacer requests
+            orig_res = requests.get(full_url, timeout=10)
+            if orig_res.status_code != 200:
+                continue
+            
+            tamp_res = requests.get(tampered_url, timeout=10)
+            if tamp_res.status_code == 200 and len(tamp_res.text.strip()) > 0:
+                vulnerable = True
+                break
+        
+        result = ("Vulnerable" if vulnerable else "Safe", "Critical" if vulnerable else "Medium")
+    except Exception as e:
+        results_queue.put(f"Error en Broken Access Control: {str(e)}")
+        result = ("Error", "Unknown")
+    
+    results_queue.put(f"Broken Access Control (A01): {result[0]} (Risk: {result[1]})")
+    return result
+#==================================================================================================
+
+# NUEVA: A02 - Cryptographic Failures Test
+def check_cryptographic_failures(url):
+    results_queue.put(f"Probando Cryptographic Failures (A02) en {url}...")
+    issues = []
+    try:
+        # Verificar HTTPS
+        parsed = urlparse(url)
+        if parsed.scheme != 'https':
+            issues.append("No HTTPS")
+        else:
+            # Intentar conexión TLS solo si es HTTPS
+            hostname = parsed.netloc.split(':')[0]  # Extraer solo el nombre del host
+            context = ssl.create_default_context()
+            with socket.create_connection((hostname, 443), timeout=10) as sock:
+                with context.wrap_socket(sock, server_hostname=hostname) as ssock:
+                    tls_version = ssock.version()
+                    if tls_version and 'TLSv1.3' not in tls_version and 'TLSv1.2' not in tls_version:
+                        issues.append("TLS version weak (<1.2)")
+                    
+                    # Verificar certificado
+                    cert = ssock.getpeercert()
+                    if cert:
+                        not_after = datetime.strptime(cert['notAfter'], '%b %d %H:%M:%S %Y %Z')
+                        if not_after < datetime.now():
+                            issues.append("Certificate expired")
+                    else:
+                        issues.append("Invalid certificate")
+                        
+    except (socket.timeout, ConnectionRefusedError, ssl.SSLError) as e:
+        if parsed.scheme == 'https':
+            issues.append(f"SSL/TLS Error: {str(e)}")
+        # Si es HTTP, no intentamos TLS
+    except Exception as e:
+        issues.append(f"Error: {str(e)}")
+
+    status = f"Issues: {', '.join(issues)}" if issues else "Secure"
+    risk = "Critical" if issues else "Low"
+    result = (status, risk)
+    
+    results_queue.put(f"Cryptographic Failures (A02): {result[0]} (Risk: {result[1]})")
+    return result
+
+#==========================================================================================================
 
 # SQL Injection Test
 def check_sql_injection(url):
@@ -401,6 +499,11 @@ def scan(url, session_id):
     except Exception as e:
         results_queue.put(f"Error en la prueba XSS con Selenium: {str(e)}")
         results["XSS (Selenium)"] = ("Error", "Unknown")
+
+    # NUEVAS: Agregar A01 y A02
+    results["Broken Access Control (A01)"] = check_broken_access_control(url)
+    results["Cryptographic Failures (A02)"] = check_cryptographic_failures(url)
+        
     
     results_queue.put("\n--- Resultados del Scan ---")
     for vuln, (status, risk) in results.items():

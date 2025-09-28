@@ -5,7 +5,7 @@ def obtener_correcciones(results):
     Envía los resultados de vulnerabilidades a Gemini y obtiene correcciones.
     Key hardcodeada para pruebas locales.
     """
-    API_KEY = "AIzaSyCyDPMCVSBr-dtypgUwQMMo9H4jFl0b1r8"  # <-- solo pruebas locales
+    API_KEY = "APIKEY"  # <-- solo pruebas locales
     MODEL = "gemini-2.0-flash"
     URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
 
