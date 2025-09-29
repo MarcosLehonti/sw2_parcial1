@@ -2,3 +2,4 @@ Reporte_Vulnerabilidades.pdf
 __pycache__/
 reports/
 venv/
+.env

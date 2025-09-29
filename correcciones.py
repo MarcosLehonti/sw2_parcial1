@@ -1,13 +1,19 @@
+import os
+from dotenv import load_dotenv
 import requests
+load_dotenv()  # 👈 carga el .env en local
 
 def obtener_correcciones(results):
     """
     Envía los resultados de vulnerabilidades a Gemini y obtiene correcciones.
     Key hardcodeada para pruebas locales.
     """
-    API_KEY = "APIKEY"  # <-- solo pruebas locales
+    API_KEY = os.getenv("GEMINI_API_KEY")
     MODEL = "gemini-2.0-flash"
     URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
+    
+    if not API_KEY:
+        return "❌ Error: GEMINI_API_KEY no está configurada"
 
     # Construir texto de vulnerabilidades
     if isinstance(results, dict):
