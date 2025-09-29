@@ -1,11 +1,12 @@
+import os
 import requests
 
 def obtener_correcciones(results):
     """
     Envía los resultados de vulnerabilidades a Gemini y obtiene correcciones.
-    Key hardcodeada para pruebas locales.
+    API_KEY desde variable de entorno.
     """
-    API_KEY = "APIKEY"  # <-- solo pruebas locales
+    API_KEY = os.getenv("GEMINI_API_KEY")  # <-- se lee de la variable de entorno
     MODEL = "gemini-2.0-flash"
     URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
 
@@ -40,7 +41,6 @@ Responde estrictamente en JSON con la siguiente estructura:
 ]
 """
 
-
     body = {"contents": [{"parts": [{"text": prompt}]}]}
     headers = {"Content-Type": "application/json", "X-goog-api-key": API_KEY}
 
@@ -53,7 +53,7 @@ Responde estrictamente en JSON con la siguiente estructura:
 
         data = response.json()
 
-        # Log para depuración (mira en tu consola Flask)
+        # Log para depuración
         print("🔍 Respuesta cruda de Gemini:", data)
 
         # Intentar extraer el texto de la respuesta

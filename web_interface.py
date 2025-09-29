@@ -63,8 +63,6 @@ def generate_report(results, filename):
     return pdf_path
 
 
-# Agrega esto (por ejemplo justo debajo de generate_report)
-
 
 def generate_correcciones_pdf(correcciones_text, filename):
     """
@@ -318,6 +316,8 @@ def check_clickjacking(url):
     
     results_queue.put(f"Clickjacking: {result[0]} (Risk: {result[1]})")
     return result
+
+
 
 # Security Headers Test
 def check_security_headers(url):
