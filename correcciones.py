@@ -1,23 +1,23 @@
 import os
 import requests
+import json
 
 def obtener_correcciones(results):
     """
     Envía los resultados de vulnerabilidades a Gemini y obtiene correcciones.
-    API_KEY desde variable de entorno.
+    Siempre devuelve un JSON (dict en Python).
     """
-    API_KEY = os.getenv("GEMINI_API_KEY")  # <-- se lee de la variable de entorno
+    API_KEY = os.getenv("GEMINI_API_KEY")
     MODEL = "gemini-2.0-flash"
     URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
 
-    # Construir texto de vulnerabilidades
-    if isinstance(results, dict):
-        texto_vulnerabilidades = "\n".join(
-            f"{vuln}: {estado} (Riesgo: {riesgo})"
-            for vuln, (estado, riesgo) in results.items()
-        )
-    else:
-        return "❌ Error: 'results' no es un dict, es " + str(type(results))
+    if not isinstance(results, dict):
+        return {"error": True, "message": f"'results' no es un dict, es {type(results)}"}
+
+    texto_vulnerabilidades = "\n".join(
+        f"{vuln}: {estado} (Riesgo: {riesgo})"
+        for vuln, (estado, riesgo) in results.items()
+    )
 
     prompt = f"""
 Eres un experto en ciberseguridad.
@@ -36,8 +36,7 @@ Responde estrictamente en JSON con la siguiente estructura:
       "Paso 2...",
       "Paso 3..."
     ]
-  }},
-  ...
+  }}
 ]
 """
 
@@ -47,24 +46,39 @@ Responde estrictamente en JSON con la siguiente estructura:
     try:
         response = requests.post(URL, headers=headers, json=body, timeout=30)
 
-        # Si no es 200, mostrar error
         if response.status_code != 200:
-            return f"❌ Error HTTP {response.status_code}: {response.text}"
+            return {
+                "error": True,
+                "message": f"Error HTTP {response.status_code}",
+                "details": response.text
+            }
 
         data = response.json()
-
-        # Log para depuración
         print("🔍 Respuesta cruda de Gemini:", data)
 
-        # Intentar extraer el texto de la respuesta
-        correcciones = (
+        correcciones_text = (
             data.get("candidates", [{}])[0]
             .get("content", {})
             .get("parts", [{}])[0]
             .get("text", "")
         )
 
-        return correcciones or "⚠️ Gemini no devolvió texto en 'candidates'."
+        if not correcciones_text:
+            return {"error": True, "message": "Gemini no devolvió texto en 'candidates'"}
+
+        try:
+            correcciones_json = json.loads(correcciones_text)
+            return {"error": False, "correcciones": correcciones_json}
+        except json.JSONDecodeError:
+            return {
+                "error": True,
+                "message": "Gemini devolvió un texto que no es JSON válido",
+                "raw": correcciones_text
+            }
 
     except Exception as e:
-        return f"❌ Error al comunicarse con Gemini: {str(e)}"
+        return {
+            "error": True,
+            "message": "Error al comunicarse con Gemini",
+            "details": str(e)
+        }
