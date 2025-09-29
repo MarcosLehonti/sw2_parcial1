@@ -1,23 +1,22 @@
-import os
 import requests
-import json
 
 def obtener_correcciones(results):
     """
     Envía los resultados de vulnerabilidades a Gemini y obtiene correcciones.
-    Siempre devuelve un JSON (dict en Python).
+    Key hardcodeada para pruebas locales.
     """
-    API_KEY = os.getenv("GEMINI_API_KEY")
+    API_KEY = "APIKEY"  # <-- solo pruebas locales
     MODEL = "gemini-2.0-flash"
     URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
 
-    if not isinstance(results, dict):
-        return {"error": True, "message": f"'results' no es un dict, es {type(results)}"}
-
-    texto_vulnerabilidades = "\n".join(
-        f"{vuln}: {estado} (Riesgo: {riesgo})"
-        for vuln, (estado, riesgo) in results.items()
-    )
+    # Construir texto de vulnerabilidades
+    if isinstance(results, dict):
+        texto_vulnerabilidades = "\n".join(
+            f"{vuln}: {estado} (Riesgo: {riesgo})"
+            for vuln, (estado, riesgo) in results.items()
+        )
+    else:
+        return "❌ Error: 'results' no es un dict, es " + str(type(results))
 
     prompt = f"""
 Eres un experto en ciberseguridad.
@@ -36,9 +35,11 @@ Responde estrictamente en JSON con la siguiente estructura:
       "Paso 2...",
       "Paso 3..."
     ]
-  }}
+  }},
+  ...
 ]
 """
+
 
     body = {"contents": [{"parts": [{"text": prompt}]}]}
     headers = {"Content-Type": "application/json", "X-goog-api-key": API_KEY}
@@ -46,39 +47,24 @@ Responde estrictamente en JSON con la siguiente estructura:
     try:
         response = requests.post(URL, headers=headers, json=body, timeout=30)
 
+        # Si no es 200, mostrar error
         if response.status_code != 200:
-            return {
-                "error": True,
-                "message": f"Error HTTP {response.status_code}",
-                "details": response.text
-            }
+            return f"❌ Error HTTP {response.status_code}: {response.text}"
 
         data = response.json()
+
+        # Log para depuración (mira en tu consola Flask)
         print("🔍 Respuesta cruda de Gemini:", data)
 
-        correcciones_text = (
+        # Intentar extraer el texto de la respuesta
+        correcciones = (
             data.get("candidates", [{}])[0]
             .get("content", {})
             .get("parts", [{}])[0]
             .get("text", "")
         )
 
-        if not correcciones_text:
-            return {"error": True, "message": "Gemini no devolvió texto en 'candidates'"}
-
-        try:
-            correcciones_json = json.loads(correcciones_text)
-            return {"error": False, "correcciones": correcciones_json}
-        except json.JSONDecodeError:
-            return {
-                "error": True,
-                "message": "Gemini devolvió un texto que no es JSON válido",
-                "raw": correcciones_text
-            }
+        return correcciones or "⚠️ Gemini no devolvió texto en 'candidates'."
 
     except Exception as e:
-        return {
-            "error": True,
-            "message": "Error al comunicarse con Gemini",
-            "details": str(e)
-        }
+        return f"❌ Error al comunicarse con Gemini: {str(e)}"
