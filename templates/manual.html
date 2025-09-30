@@ -1,0 +1,179 @@
+{% extends "base.html" %}
+
+{% block title %}Manual de Usuario - Escáner de Vulnerabilidades{% endblock %}
+
+{% block content %}
+
+<!-- Índice arriba -->
+<div class="mb-4">
+  <aside class="aurora-card p-3">
+    <h5 class="mb-3 text-center"><i class="fas fa-list"></i> Índice</h5>
+    <ul class="list-unstyled text-center">
+      <li><a href="#url"><i class="fas fa-link"></i> Paso 1: Ingreso de la URL</a></li>
+      <li><a href="#console"><i class="fas fa-terminal"></i> Paso 2: Consola de escaneo</a></li>
+      <li><a href="#summary"><i class="fas fa-table"></i> Paso 3: Resumen de vulnerabilidades</a></li>
+      <li><a href="#fixes"><i class="fas fa-tools"></i> Paso 4: Correcciones sugeridas</a></li>
+      <li><a href="#report"><i class="fas fa-file-download"></i> Paso 5: Descargar reportes</a></li>
+    </ul>
+  </aside>
+</div>
+
+<!-- Contenido principal abajo -->
+<div class="col-12">
+
+  <section id="url" class="mb-5 aurora-card p-4">
+    <div class="mb-3 text-center">
+      <img src="{{ url_for('static', filename='assets/index.jpg') }}"
+          alt="Pantalla: Ingreso de URL - Escáner"
+          class="img-fluid rounded shadow-sm" 
+          style="max-height:320px; object-fit:contain; width:100%; background-color:#000;" />
+    </div>
+    <h3><i class="fas fa-link text-primary"></i> Paso 1: Ingreso de la URL</h3>
+    <p>
+      El primer paso para iniciar un análisis de vulnerabilidades es proporcionar 
+      la dirección web (URL) del sitio o aplicación que deseas escanear. 
+      Es importante que la URL esté escrita correctamente, incluyendo el protocolo 
+      <strong>http://</strong> o <strong>https://</strong>.  
+    </p>
+    <p>
+      Por ejemplo, una URL válida sería: <code>https://www.ejemplo.com</code>.  
+      En cambio, si escribes solamente <code>www.ejemplo.com</code> sin el 
+      protocolo, el sistema intentará añadir <code>http://</code> por defecto,
+      pero lo ideal es que siempre incluyas el protocolo para evitar confusiones.
+    </p>
+    <p>
+      Una vez que hayas escrito la URL en el campo correspondiente, haz clic en 
+      el botón <strong>“Iniciar escaneo”</strong>. 
+      El software validará la dirección y, si es correcta, comenzará a ejecutar
+      las pruebas de seguridad sobre la página indicada.
+    </p>
+    <p>
+      Dependiendo del tamaño y la complejidad del sitio web, el análisis puede 
+      tardar algunos segundos o incluso varios minutos. Durante este tiempo, 
+      podrás observar un indicador de progreso en la pantalla que te informará 
+      que el proceso se está ejecutando correctamente.
+    </p>
+  </section>
+
+  <section id="console" class="mb-5 aurora-card p-4">
+    <div class="mb-3 text-center">
+      <img src="{{ url_for('static', filename='assets/consola.jpg') }}"
+          alt="Pantalla: Consola de Escaneo"
+          class="img-fluid rounded shadow-sm"
+          style="max-height:320px; object-fit:contain; width:100%; background-color:#000;" />
+    </div>
+    <h3><i class="fas fa-terminal text-success"></i> Paso 2: Consola de escaneo</h3>
+    <p>
+      Después de presionar el botón <strong>“Iniciar escaneo”</strong>, se abrirá la 
+      <strong>consola de escaneo</strong>. Esta sección es fundamental porque te muestra 
+      en tiempo real el progreso del análisis que el sistema está realizando sobre la URL 
+      que ingresaste previamente.
+    </p>
+    <p>
+      En la consola se irán desplegando mensajes y registros que indican qué pruebas de 
+      seguridad se están ejecutando en ese momento. Esto incluye, por ejemplo, la verificación 
+      de cabeceras de seguridad, posibles vulnerabilidades comunes (como inyecciones SQL o XSS), 
+      y el estado de respuesta del servidor.
+    </p>
+    <p>
+      El objetivo de esta vista es que puedas <strong>monitorear en vivo</strong> cómo avanza el 
+      escaneo. De esta manera, si ocurre algún error (como una URL inválida o un tiempo de espera 
+      agotado), lo sabrás al instante.
+    </p>
+    <p>
+      Dependiendo del tamaño del sitio y de la complejidad de las pruebas, el contenido de la 
+      consola puede actualizarse durante varios segundos o minutos. Al finalizar, el sistema te 
+      notificará que el escaneo ha concluido y automáticamente te llevará a la siguiente sección: 
+      el resumen de vulnerabilidades detectadas.
+    </p>
+  </section>
+
+  <section id="summary" class="mb-5 aurora-card p-4">
+    <div class="mb-3 text-center">
+      <img src="{{ url_for('static', filename='assets/resumen.jpg') }}"
+          alt="Pantalla: Resumen de Vulnerabilidades"
+          class="img-fluid rounded shadow-sm"
+          style="max-height:320px; object-fit:contain; width:100%; background-color:#000;" />
+    </div>
+    <h3><i class="fas fa-table text-warning"></i> Paso 3: Resumen de vulnerabilidades</h3>
+    <p>
+      Una vez que el escaneo haya concluido, se generará automáticamente un 
+      <strong>resumen detallado</strong> con los hallazgos encontrados en la URL 
+      analizada. Este resumen se presenta en forma de tabla para que la información 
+      sea clara, estructurada y fácil de interpretar.
+    </p>
+    <p>
+      Cada fila de la tabla representa una vulnerabilidad detectada. Se incluirán 
+      datos como el tipo de vulnerabilidad (por ejemplo: inyección SQL, XSS, 
+      cabeceras inseguras, etc.), una breve descripción del problema y su 
+      <strong>nivel de severidad</strong>.
+    </p>
+    <p>
+      Los niveles de severidad se categorizan en:
+    </p>
+    <ul>
+      <li><span class="text-danger">Alta</span>: Vulnerabilidades críticas que representan un riesgo inmediato y deben solucionarse con urgencia.</li>
+      <li><span class="text-warning">Media</span>: Vulnerabilidades importantes pero no críticas; requieren atención para evitar que se conviertan en un riesgo mayor.</li>
+      <li><span class="text-success">Baja</span>: Riesgos menores o configuraciones no óptimas que conviene corregir para fortalecer la seguridad.</li>
+    </ul>
+    <p>
+      Este resumen es esencial porque te ofrece una <strong>visión global de la seguridad</strong> 
+      de tu sitio web o aplicación, permitiéndote priorizar las acciones de corrección de acuerdo 
+      con la gravedad de los hallazgos.
+    </p>
+  </section>
+
+  <section id="fixes" class="mb-5 aurora-card p-4">
+    <div class="mb-3 text-center">
+      <img src="{{ url_for('static', filename='assets/correcciones.jpg') }}"
+          alt="Pantalla: Correcciones Sugeridas"
+          class="img-fluid rounded shadow-sm"
+          style="max-height:320px; object-fit:contain; width:100%; background-color:#000;" />
+    </div>
+    <h3><i class="fas fa-tools text-info"></i> Paso 4: Correcciones sugeridas</h3>
+    <p>
+      En esta sección encontrarás un conjunto de <strong>medidas recomendadas</strong> 
+      para mitigar y solucionar cada una de las vulnerabilidades que fueron detectadas 
+      durante el escaneo. Estas sugerencias están diseñadas para guiarte en la 
+      implementación de mejores prácticas de seguridad.
+    </p>
+    <p>
+      Por cada vulnerabilidad listada en el resumen anterior, se mostrarán pasos o 
+      recomendaciones específicas. Por ejemplo:
+    </p>
+    <ul>
+      <li>Actualizar la versión del servidor o framework a una más segura.</li>
+      <li>Corregir configuraciones inseguras en cabeceras HTTP.</li>
+      <li>Implementar validación de entradas para prevenir inyecciones SQL o XSS.</li>
+      <li>Configurar contraseñas y llaves de acceso con mayor fortaleza.</li>
+      <li>Aplicar parches o actualizaciones de seguridad recomendadas por proveedores.</li>
+    </ul>
+    <p>
+      El propósito de esta sección es ayudarte a <strong>pasar de la detección a la acción</strong>, 
+      brindándote la información necesaria para reforzar la seguridad de tu aplicación o sitio web.  
+      Aunque algunas correcciones pueden requerir conocimientos técnicos avanzados, seguir estas 
+      recomendaciones reducirá significativamente los riesgos de ataque.
+    </p>
+    <p>
+      Una vez aplicadas las correcciones, se recomienda volver a ejecutar el escaneo 
+      para verificar que las vulnerabilidades hayan sido resueltas correctamente.
+    </p>
+  </section>
+
+  <section id="report" class="mb-5 aurora-card p-4">
+    <h3><i class="fas fa-file-download text-danger"></i> Paso 5: Descargar reportes</h3>
+    <p>Finalmente, puedes descargar los resultados en dos formatos:</p>
+    <ul>
+      <li><strong>Reporte PDF de vulnerabilidades:</strong> contiene el listado completo de hallazgos.</li>
+      <li><strong>Reporte PDF de correcciones:</strong> incluye las recomendaciones para solucionar los problemas detectados.</li>
+    </ul>
+    <p>De esta manera tendrás documentación clara tanto de las vulnerabilidades encontradas como de las acciones necesarias para corregirlas.</p>
+  </section>
+
+  <div class="text-center mt-4">
+    <a href="{{ url_for('home') }}" class="btn btn-gradient btn-lg">Iniciar escaneo</a>
+  </div>
+
+</div>
+
+{% endblock %}

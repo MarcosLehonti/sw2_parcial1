@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block title %}Inicio - Escáner de Vulnerabilidades{% endblock %}
+
+{% block content %}
+<section class="mb-5">
+  <div class="row justify-content-center">
+    <div class="col-12 col-lg-10">
+      <div class="aurora-card p-4">
+        <div class="row align-items-center g-3">
+          <div class="col-md-3 text-center logo-container">
+            <div class="hero-icon mb-2"><i class="fas fa-shield-alt fa-2x"></i></div>
+            <h3 class="mb-0">Qué ofrecemos</h3>
+            <p class="text-muted small mt-1">Análisis automatizado y reportes claros</p>
+          </div>
+
+          <div class="col-md-9">
+            <p class="mb-2">Nuestro escáner revisa una aplicación web para detectar las vulnerabilidades más comunes y te entrega hallazgos con niveles de riesgo y sugerencias de corrección.</p>
+            <div class="d-flex gap-2 flex-wrap">
+              <span class="chip chip-sqli"><i class="fas fa-database"></i> SQL Injection</span>
+              <span class="chip chip-xss"><i class="fas fa-code"></i> XSS</span>
+              <span class="chip chip-click"><i class="fas fa-mouse-pointer"></i> Clickjacking</span>
+              <span class="chip chip-headers"><i class="fas fa-shield-virus"></i> Security Headers</span>
+              <span class="chip chip-redirect"><i class="fas fa-external-link-alt"></i> Open Redirect</span>
+              <span class="chip chip-csrf"><i class="fas fa-lock"></i> CSRF</span>
+              <span class="chip" style="background:#fff0f6;color:#9f1239;"><i class="fas fa-user-shield"></i> Broken Access Control</span>
+              <span class="chip" style="background:#eef2ff;color:#1f2937;"><i class="fas fa-lock"></i> Cryptographic Failures</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="mb-4">
+  <div class="row gy-4">
+
+    <!-- SQL Injection -->
+    <div class="col-12 col-md-6 col-lg-4">
+      <article class="vuln-type p-3 aurora-card h-100">
+        <div class="d-flex align-items-start gap-3">
+          <div><i class="fas fa-database fa-2x text-danger"></i></div>
+          <div>
+            <h5>SQL Injection</h5>
+            <p class="mb-2 text-muted small">Inyección de comandos SQL a través de entradas no validadas. Permite leer, modificar o borrar datos de la base de datos.</p>
+            <p class="mb-0"><strong>Qué hacemos:</strong> Detectamos parámetros vulnerables, payloads de prueba y recomendamos uso de sentencias preparadas y validación.</p>
+          </div>
+        </div>
+      </article>
+    </div>
+
+    <!-- XSS -->
+    <div class="col-12 col-md-6 col-lg-4">
+      <article class="vuln-type p-3 aurora-card h-100">
+        <div class="d-flex align-items-start gap-3">
+          <div><i class="fas fa-code fa-2x text-warning"></i></div>
+          <div>
+            <h5>Cross-Site Scripting (XSS)</h5>
+            <p class="mb-2 text-muted small">Inserción de scripts maliciosos en páginas vistas por otros usuarios. Puede robar sesiones o ejecutar acciones en nombre del usuario.</p>
+            <p class="mb-0"><strong>Qué hacemos:</strong> Escaneamos inputs reflejados y almacenados, y sugerimos escaping, CSP y saneamiento de entradas.</p>
+          </div>
+        </div>
+      </article>
+    </div>
+
+    <!-- Clickjacking -->
+    <div class="col-12 col-md-6 col-lg-4">
+      <article class="vuln-type p-3 aurora-card h-100">
+        <div class="d-flex align-items-start gap-3">
+          <div><i class="fas fa-mouse-pointer fa-2x text-info"></i></div>
+          <div>
+            <h5>Clickjacking</h5>
+            <p class="mb-2 text-muted small">Una página maliciosa carga tu sitio en un iframe y engaña al usuario para realizar acciones no deseadas.</p>
+            <p class="mb-0"><strong>Qué hacemos:</strong> Comprobamos X-Frame-Options y Content-Security-Policy/frame-ancestors y damos la configuración recomendada.</p>
+          </div>
+        </div>
+      </article>
+    </div>
+
+    <!-- Security Headers -->
+    <div class="col-12 col-md-6 col-lg-4">
+      <article class="vuln-type p-3 aurora-card h-100">
+        <div class="d-flex align-items-start gap-3">
+          <div><i class="fas fa-shield-alt fa-2x text-primary"></i></div>
+          <div>
+            <h5>Security Headers</h5>
+            <p class="mb-2 text-muted small">Encabezados HTTP que mejoran la seguridad (CSP, HSTS, X-Content-Type-Options, etc.).</p>
+            <p class="mb-0"><strong>Qué hacemos:</strong> Reportamos headers faltantes o mal configurados y damos valores seguros recomendados.</p>
+          </div>
+        </div>
+      </article>
+    </div>
+
+    <!-- Open Redirect -->
+    <div class="col-12 col-md-6 col-lg-4">
+      <article class="vuln-type p-3 aurora-card h-100">
+        <div class="d-flex align-items-start gap-3">
+          <div><i class="fas fa-external-link-alt fa-2x text-success"></i></div>
+          <div>
+            <h5>Open Redirect</h5>
+            <p class="mb-2 text-muted small">Redirecciones controladas por parámetros que permiten a atacantes enviar usuarios a sitios maliciosos.</p>
+            <p class="mb-0"><strong>Qué hacemos:</strong> Detectamos parámetros redirect, probamos omisiones y recomendamos validación de destinos y listas blancas.</p>
+          </div>
+        </div>
+      </article>
+    </div>
+
+    <!-- CSRF -->
+    <div class="col-12 col-md-6 col-lg-4">
+      <article class="vuln-type p-3 aurora-card h-100">
+        <div class="d-flex align-items-start gap-3">
+          <div><i class="fas fa-lock fa-2x text-secondary"></i></div>
+          <div>
+            <h5>CSRF (Cross-Site Request Forgery)</h5>
+            <p class="mb-2 text-muted small">Ataques que fuerzan al navegador del usuario a ejecutar acciones autenticadas sin su consentimiento.</p>
+            <p class="mb-0"><strong>Qué hacemos:</strong> Revisamos formularios y endpoints y recomendamos tokens anti-CSRF, SameSite cookies y validación de origen.</p>
+          </div>
+        </div>
+      </article>
+    </div>
+
+    <!-- Broken Access Control (A01) -->
+    <div class="col-12 col-md-6 col-lg-4">
+      <article class="vuln-type p-3 aurora-card h-100">
+        <div class="d-flex align-items-start gap-3">
+          <div><i class="fas fa-user-shield fa-2x" style="color:#ef4444;"></i></div>
+          <div>
+            <h5>Broken Access Control </h5>
+            <p class="mb-2 text-muted small">Control de acceso inadecuado que permite a usuarios no autorizados ver o modificar recursos (p. ej. IDs expuestos en URLs).</p>
+            <p class="mb-0"><strong>Qué hacemos:</strong> Buscamos endpoints con IDs predecibles o parámetros manipulables, probamos tampering y recomendamos validación de autorización por servidor y uso de IDs no predecibles.</p>
+          </div>
+        </div>
+      </article>
+    </div>
+
+
+
+    <div class="col-12 col-md-6 col-lg-4">
+      <article class="vuln-type p-3 aurora-card h-100">
+        <div class="d-flex align-items-start gap-3">
+          <div><i class="fas fa-lock fa-2x text-secondary"></i></div>
+          <div>
+           <h5>Cryptographic Failures</h5>
+            <p class="mb-2 text-muted small">Problemas en la implementación criptográfica: uso de HTTP sin TLS, certificados inválidos o versiones TLS débiles.</p>
+            <p class="mb-0"><strong>Qué hacemos:</strong> Verificamos HTTPS, versiones TLS y validez de certificados; y recomendamos HSTS, certificados válidos y configuración TLS moderna (>=1.2/1.3).</p>
+         </div>
+        </div>
+      </article>
+    </div>
+
+  </div>
+</section>
+
+<section class="text-center mt-4">
+  <a href="{{ url_for('home') }}" class="btn btn-gradient btn-lg me-2">Iniciar escaneo</a>
+  <a href="{{ url_for('manual') }}" class="btn btn-gradient btn-lg me-2">ir a Manual</a>
+
+</section>
+{% endblock %}

@@ -21,7 +21,7 @@ import ssl
 import re
 import socket
 from datetime import datetime
-from urllib.parse import urlparse, urljoin  # ya lo usas, pero lo dejo claro
+from urllib.parse import urlparse, urljoin  
 
 #===============================================================================
 app = Flask(__name__)
@@ -266,23 +266,200 @@ def check_cryptographic_failures(url):
 
 # SQL Injection Test
 def check_sql_injection(url):
+    """
+    SQLi básico y seguro:
+    - Descubre parámetros GET desde la página principal.
+    - Ejecuta pruebas error-based, boolean-based (true/false) y time-based suaves.
+    - Empuja detalles a results_queue y devuelve (estado, riesgo).
+    """
     results_queue.put(f"Probando SQL Injection en {url}...")
-    test_payloads = ["' OR '1'='1", '" OR "1"="1', "'--", "' OR 1=1 --"]
-    vulnerable = False
-    for payload in test_payloads:
-        test_url = f"{url}?id={payload}"
+    import time as _t
+    from urllib.parse import urlparse, parse_qs, urlencode
+
+    # ------------ utilidades ------------
+    ERROR_SIGNS = [
+        "you have an error in your sql syntax",
+        "unclosed quotation mark",
+        "quoted string not properly terminated",
+        "sqlstate",
+        "odbc",
+        "ora-",
+        "postgresql",
+        "syntax error at or near"
+    ]
+
+    TIME_PAYLOADS = [
+        # MySQL
+        ("' AND SLEEP(3)-- ", 3.0),
+        # PostgreSQL
+        ("' AND pg_sleep(3)-- ", 3.0),
+        # SQL Server
+        ("' WAITFOR DELAY '0:0:3'-- ", 3.0),
+    ]
+
+    def has_sql_error(text: str) -> bool:
+        low = text.lower()
+        return any(sig in low for sig in ERROR_SIGNS)
+
+    def http_get(session, u, params=None, timeout=10):
         try:
-            res = requests.get(test_url)
-            if any(error in res.text.lower() for error in ["sql", "syntax", "mysql", "native client"]):
-                vulnerable = True
+            return session.get(u, params=params, timeout=timeout, allow_redirects=True)
+        except Exception as e:
+            results_queue.put(f"  └─ Error de red: {e}")
+            return None
+
+    def discover_targets(session, base_url):
+        # Intenta cargar la página base y extraer links con query params
+        discovered = set()
+        try:
+            r = session.get(base_url, timeout=10)
+            html = r.text if r is not None else ""
+        except Exception:
+            html = ""
+        # Links simples: href="?a=1&b=2" o href="/ruta?x=1"
+        try:
+            soup = BeautifulSoup(html, 'html.parser')
+            for a in soup.find_all('a', href=True):
+                href = a.get('href')
+                full = urljoin(base_url, href)
+                q = urlparse(full).query
+                if q:
+                    discovered.add(full)
+        except Exception:
+            pass
+        # Si no encontró nada, usa el propio URL si ya trae query; si no, crea uno con nombres comunes
+        if not discovered:
+            parsed = urlparse(base_url)
+            if parsed.query:
+                discovered.add(base_url)
+            else:
+                # intenta con parámetros frecuentes
+                common = ["id", "q", "search", "page", "cat", "user", "prod", "item"]
+                for name in common:
+                    test = f"{base_url}?{name}=1"
+                    discovered.add(test)
+        # Limita para no saturar
+        return list(discovered)[:10]
+
+    def enumerate_params(u):
+        p = urlparse(u)
+        qs = parse_qs(p.query)
+        return list(qs.keys())
+
+    session = requests.Session()
+
+    # Asegura esquema
+    if not url.startswith(("http://", "https://")):
+        url = "http://" + url
+
+    # Descubre endpoints con parámetros
+    targets = discover_targets(session, url)
+    if not targets:
+        results_queue.put("  └─ No se hallaron parámetros que probar.")
+        return ("Safe", "Low")
+
+    vulnerable = False
+    reason = ""
+    detail = ""
+
+    for target in targets:
+        params = enumerate_params(target)
+        if not params:
+            continue
+
+        # Base sin query para reconstruir
+        parsed = urlparse(target)
+        base = f"{parsed.scheme}://{parsed.netloc}{parsed.path}"
+
+        # Construye un dict base con valores benignos
+        base_qs = {k: "1" for k in params}
+
+        # 1) ERROR-BASED: agregar una comilla para romper
+        for k in params:
+            mutated = base_qs.copy()
+            mutated[k] = mutated[k] + "'"
+            t0 = _t.time()
+            r = http_get(session, base, params=mutated)
+            if r is None:
+                continue
+            dt = _t.time() - t0
+            if has_sql_error(r.text):
+                vulnerable, reason, detail = True, "Error-based", f"{parsed.path} param={k}"
+                results_queue.put(f"  ✔ Indicio ERROR-BASED en {detail} (t={dt:.2f}s)")
                 break
-        except requests.exceptions.RequestException as e:
-            results_queue.put(f"Error en la solicitud: {str(e)}")
-            return ("Error", "Unknown")
-    
-    result = ("Vulnerable" if vulnerable else "Safe", "High" if vulnerable else "Low")
-    results_queue.put(f"SQL Injection: {result[0]} (Risk: {result[1]})")
-    return result
+        if vulnerable:
+            break
+
+        # 2) BOOLEAN-BASED: comparar TRUE vs FALSE (misma ruta/param)
+        for k in params:
+            # Base
+            base_qs[k] = "1"
+            # TRUE y FALSE para string y numérico
+            candidates = [
+                ("' OR '1'='1'-- ", "' OR '1'='2'-- "),
+                ("1 OR 1=1", "1 OR 1=2")
+            ]
+            for true_p, false_p in candidates:
+                mutated_true = base_qs.copy()
+                mutated_true[k] = true_p
+                mutated_false = base_qs.copy()
+                mutated_false[k] = false_p
+
+                rT = http_get(session, base, params=mutated_true)
+                rF = http_get(session, base, params=mutated_false)
+                rB = http_get(session, base, params=base_qs)
+
+                if rT is None or rF is None or rB is None:
+                    continue
+
+                # Heurística: diferencias notables en tamaño/estado
+                lenT, lenF, lenB = len(rT.text), len(rF.text), len(rB.text)
+                scT, scF, scB = rT.status_code, rF.status_code, rB.status_code
+
+                size_diff = abs(lenT - lenF)
+                status_diff = (scT != scF) or (scT != scB)
+
+                if size_diff > (0.15 * max(lenT, lenF, 1)) or status_diff:
+                    vulnerable, reason, detail = True, "Boolean-based", f"{parsed.path} param={k}"
+                    results_queue.put(f"  ✔ Indicio BOOLEAN-BASED en {detail} (Δlen={size_diff}, codes {scT}/{scF}/{scB})")
+                    break
+            if vulnerable:
+                break
+        if vulnerable:
+            break
+
+        # 3) TIME-BASED: un intento suave por target y param
+        for k in params:
+            baseline = http_get(session, base, params=base_qs)
+            if baseline is None:
+                continue
+            baseline_t = baseline.elapsed.total_seconds() if hasattr(baseline, "elapsed") else 0.5
+
+            for payload, wait_s in TIME_PAYLOADS[:2]:  # limita intentos
+                mutated = base_qs.copy()
+                mutated[k] = payload
+                t0 = _t.time()
+                r = http_get(session, base, params=mutated, timeout=10 + int(wait_s))
+                dt = _t.time() - t0
+                if r is None:
+                    continue
+                # Umbral: baseline + 0.7*wait (conservador para evitar falsos)
+                if dt > baseline_t + max(1.5, 0.7 * wait_s):
+                    vulnerable, reason, detail = True, "Time-based", f"{parsed.path} param={k} (~{dt:.2f}s)"
+                    results_queue.put(f"  ✔ Indicio TIME-BASED en {detail} (baseline≈{baseline_t:.2f}s)")
+                    break
+            if vulnerable:
+                break
+        if vulnerable:
+            break
+
+    if vulnerable:
+        results_queue.put(f"SQL Injection: Vulnerable ({reason}) en {detail}")
+        return ("Vulnerable", "High")
+    else:
+        results_queue.put("SQL Injection: No se hallaron indicios (pruebas básicas).")
+        return ("Safe", "Low")
+
 
 # XSS Test
 def check_xss(url):
@@ -537,7 +714,9 @@ def scan(url, session_id):
 # Rutas de la aplicación web
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('inicio_vulnerabilidades.html')
+
+
 
 @app.route('/scan', methods=['POST'])
 def start_scan():
@@ -605,6 +784,18 @@ def download_correcciones(session_id):
     else:
         flash('El PDF de correcciones no está disponible', 'danger')
         return redirect(url_for('index'))
+
+
+@app.route('/index')
+def home():
+    return render_template('index.html')
+
+
+@app.route('/manual_vul')
+def manual():
+    return render_template('manual.html')
+
+
 
 
 if __name__ == '__main__':
